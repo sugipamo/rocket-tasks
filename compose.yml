@@ -1,15 +1,29 @@
-version: '3.8'  # Docker Composeのバージョンに応じて変更
+version: '3.8'
 
 volumes:
   mongodb_data: { driver: local }
+  traefik_data: {}
 
 services:
+  traefik:
+    image: traefik:v2.10
+    # restart: always
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--entrypoints.https.address=:443"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
   rocketchat:
     image: registry.rocket.chat/rocketchat/rocket.chat
-    restart: always
+    # restart: always
     labels:
       traefik.enable: "true"
-      traefik.http.routers.rocketchat.rule: Host()
+      traefik.http.routers.rocketchat.rule: "Host(`tasks.local`)"
       traefik.http.routers.rocketchat.tls: "true"
       traefik.http.routers.rocketchat.entrypoints: https
       traefik.http.routers.rocketchat.tls.certresolver: le
@@ -22,11 +36,11 @@ services:
     depends_on:
       - mongodb
     ports:
-      - "0.0.0.0:3000:3000"
+      - "3000:3000" # Traefikがリダイレクトするので、内部でポート3000で起動します
 
   mongodb:
     image: docker.io/bitnami/mongodb:5.0
-    restart: always
+    # restart: always
     volumes:
       - mongodb_data:/bitnami/mongodb
     environment:
